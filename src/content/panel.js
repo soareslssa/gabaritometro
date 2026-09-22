@@ -56,6 +56,14 @@
       .preset { flex:1; background:#222a38; border:1px solid #2a3244; color:#b9c4d6; border-radius:6px;
                 padding:5px 0; font-size:10px; cursor:pointer; }
       .preset:hover { background:#2c3648; }
+      .preset-input { flex:0 0 42px; min-width:0; background:#10141c; border:1px solid #2a3244;
+                      color:#e8ecf3; border-radius:6px; padding:5px 4px; font-size:10px;
+                      text-align:center; -moz-appearance:textfield; }
+      .preset-input::-webkit-inner-spin-button, .preset-input::-webkit-outer-spin-button {
+                      -webkit-appearance:none; margin:0; }
+      .preset-input:focus { outline:none; border-color:#4ea8ff; }
+      .preset-input.invalid { border-color:#ff6b6b; }
+      .preset-go { flex:0 0 26px; }
       .cstate { font-size:10px; margin-top:5px; color:#7b8699; }
       .cstate.paused { color:#f2b63c; }
       .cstate.done { color:#37d67a; font-weight:600; }
@@ -198,15 +206,7 @@
 
   // ---- cronômetro de blocos ------------------------------------------------
   function renderPresets() {
-    const el = $('c-presets');
-    el.innerHTML = '';
-    for (const min of settings.blockPresets || [45, 56, 75]) {
-      const b = document.createElement('button');
-      b.className = 'preset';
-      b.textContent = `${min}min`;
-      b.addEventListener('click', () => RC.clock.start(min));
-      el.appendChild(b);
-    }
+    RC.blockPicker.render($('c-presets'), settings.blockPresets, (min) => RC.clock.start(min));
   }
 
   function renderClock(s) {

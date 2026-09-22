@@ -199,8 +199,10 @@
     onChange: (fn) => listeners.add(fn),
 
     async start(minutes) {
+      const mins = T.normalizeMinutes(minutes);
+      if (mins == null) return;
       const now = Date.now();
-      const fresh = T.create(Math.max(1, minutes) * 60000, now, RC.dayKey(now));
+      const fresh = T.create(mins * 60000, now, RC.dayKey(now));
       fresh.committedMs = 0;
       presence = await RC.store.touchPresence(TAB, KIND, visible());
       await persist(T.resume(fresh, now, TAB));

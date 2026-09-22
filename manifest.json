@@ -3,8 +3,13 @@
   "name": "Gabaritômetro — Contador de Questões",
   "version": "0.2.0",
   "description": "Conta questões do TEC Concursos e de PDFs: acertos, erros, % por disciplina, horas líquidas, meta diária e ofensiva. 100% local.",
-  "permissions": ["storage", "notifications"],
-  "host_permissions": ["https://www.tecconcursos.com.br/*"],
+  "permissions": [
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://www.tecconcursos.com.br/*"
+  ],
   "action": {
     "default_popup": "src/popup/popup.html",
     "default_title": "Gabaritômetro",
@@ -28,17 +33,24 @@
   "options_page": "src/options/options.html",
   "content_scripts": [
     {
-      "matches": ["https://www.tecconcursos.com.br/*"],
-      "js": ["src/main/tec-hook.js"],
+      "matches": [
+        "https://www.tecconcursos.com.br/*"
+      ],
+      "js": [
+        "src/main/tec-hook.js"
+      ],
       "world": "MAIN",
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://www.tecconcursos.com.br/*"],
+      "matches": [
+        "https://www.tecconcursos.com.br/*"
+      ],
       "js": [
         "src/shared/schema.js",
         "src/shared/presence.js",
         "src/shared/timer.js",
+        "src/shared/blockpicker.js",
         "src/shared/storage.js",
         "src/shared/stats.js",
         "src/content/simulado.js",

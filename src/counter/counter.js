@@ -183,15 +183,7 @@
   let settings = RC.DEFAULT_SETTINGS;
 
   function renderPresets() {
-    const el = $('b-presets');
-    el.innerHTML = '';
-    for (const min of settings.blockPresets || [45, 56, 75]) {
-      const b = document.createElement('button');
-      b.className = 'preset';
-      b.textContent = `${min}min`;
-      b.addEventListener('click', () => RC.clock.start(min));
-      el.appendChild(b);
-    }
+    RC.blockPicker.render($('b-presets'), settings.blockPresets, (min) => RC.clock.start(min));
   }
 
   function renderClock(s) {

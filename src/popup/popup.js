@@ -115,26 +115,20 @@
   }
 
   async function startBlock(minutes) {
+    const mins = RC.timer.normalizeMinutes(minutes);
+    if (mins == null) return;
     const now = Date.now();
-    const fresh = RC.timer.create(Math.max(1, minutes) * 60000, now, RC.dayKey(now));
+    const fresh = RC.timer.create(mins * 60000, now, RC.dayKey(now));
     fresh.committedMs = 0;
     // owner nulo: a primeira superfície viva assume o bloco.
     timerState = await RC.store.setTimer(RC.timer.resume(fresh, now, null));
     renderBlock();
-    chrome.runtime.sendMessage({ type: 'rc:openCounter', block: minutes });
+    chrome.runtime.sendMessage({ type: 'rc:openCounter', block: mins });
     window.close();
   }
 
   function renderBlockPresets(presets) {
-    const el = $('b-presets');
-    el.innerHTML = '';
-    for (const min of presets || [45, 56, 75]) {
-      const b = document.createElement('button');
-      b.className = 'preset';
-      b.textContent = `${min}min`;
-      b.addEventListener('click', () => startBlock(min));
-      el.appendChild(b);
-    }
+    RC.blockPicker.render($('b-presets'), presets, startBlock);
   }
 
   $('b-toggle').addEventListener('click', async () => {

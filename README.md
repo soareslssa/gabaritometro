@@ -93,9 +93,13 @@ agregados antigos legítimos de quem já tem histórico longo. Tem teste especí
 
 ## Horas líquidas
 
-Cronômetro de blocos com presets configuráveis (padrão 45 / 56 / 75 min), controlável em três
-lugares: **painel do TEC**, **janela do contador** e **popup do ícone**. Ele **para sozinho** quando
-você não está estudando e retoma quando volta:
+Cronômetro de blocos controlável em três lugares — **painel do TEC**, **janela do contador** e
+**popup do ícone** — com presets (padrão 45 / 56 / 75 min, editáveis em Configurações) e um **campo
+para digitar a duração na hora**: digite os minutos, Enter, e o bloco começa. O campo não guarda o
+último valor, de propósito; e a duração é limitada a 10h, porque um alvo absurdo digitado por engano
+viraria um bloco que nunca fecha.
+
+Ele **para sozinho** quando você não está estudando e retoma quando volta:
 
 | situação | comportamento |
 |---|---|
@@ -186,10 +190,12 @@ matéria/assunto/banca, ids únicos, split TEC × PDF, `resetDay` preservando os
 recalculando a ofensiva, e a **regressão do chute retroativo** (o id era remontado por fora e
 virava `tec:undefined`, fazendo `setGuess` falhar em silêncio).
 
-`test-timer.mjs` — 25 asserções sobre o cronômetro, com o "agora" injetado (nenhum teste espera
+`test-timer.mjs` — 59 asserções sobre o cronômetro, com o "agora" injetado (nenhum teste espera
 tempo real passar): acumulação em trechos, o clamp do heartbeat contra crash, pausa manual que não
-se desfaz sozinha, teto do bloco, matéria dominante com desempate determinístico e persistência das
-horas por dia/matéria.
+se desfaz sozinha, teto do bloco, matéria dominante com desempate determinístico, persistência das
+horas por dia/matéria, a normalização da duração digitada (vazio, texto, negativo, vírgula decimal,
+valores absurdos) e um teste de fumaça do seletor de duração — que é o único caminho para iniciar
+bloco nas três superfícies, e um erro nele quebraria todas de uma vez.
 
 `test-logic.mjs` — 29 asserções cobrindo contagem, dedupe no mesmo dia, revisão em dia diferente, anulada fora da %,
 ofensiva com registros fora de ordem, ranking por matéria, desfazer, import idempotente, tempo

@@ -54,3 +54,15 @@ button.danger-soft:hover { background: #3a2d42; }
 .blockbox.paused .bstate { color: #f2b63c; }
 .blockbox.done .btime { color: #4ea8ff; }
 .blockbox.done .bstate { color: #37d67a; font-weight: 600; cursor: pointer; }
+
+/* Campo de duração manual do bloco (componente RC.blockPicker). */
+.preset-input {
+  flex: 0 0 46px; min-width: 0; background: #10141c; border: 1px solid #2a3244;
+  color: #e8ecf3; border-radius: 6px; padding: 5px 4px; font-size: 10.5px;
+  text-align: center; -moz-appearance: textfield;
+}
+.preset-input::-webkit-inner-spin-button,
+.preset-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.preset-input:focus { outline: none; border-color: #4ea8ff; }
+.preset-input.invalid { border-color: #ff6b6b; }
+.preset-go { flex: 0 0 28px; }

@@ -114,5 +114,89 @@ await RC.store.importJSON(json);
 time = await RC.store.getTime();
 ck('import não dobra horas', Math.round(time['2026-09-21'].totalMs / MIN), 90);
 
+// ---- duração digitada à mão ------------------------------------------------
+// O campo é <input type="number">, mas o valor chega como string e o usuário
+// pode digitar qualquer coisa. Nada disso pode virar um bloco inválido.
+const nm = T.normalizeMinutes;
+ck('vazio é rejeitado', nm(''), null);
+ck('espaços são rejeitados', nm('   '), null);
+ck('null é rejeitado', nm(null), null);
+ck('undefined é rejeitado', nm(undefined), null);
+ck('texto é rejeitado', nm('abc'), null);
+ck('zero é rejeitado', nm(0), null);
+ck('negativo é rejeitado', nm(-5), null);
+ck('menor que 1 min é rejeitado', nm(0.4), null);
+ck('string numérica', nm('30'), 30);
+ck('string com espaços', nm('  45 '), 45);
+ck('número direto', nm(56), 56);
+ck('arredonda pra baixo', nm(30.4), 30);
+ck('arredonda pra cima', nm(30.6), 31);
+ck('vírgula decimal do teclado BR', nm('30,6'), 31);
+ck('0,7 arredonda pra 1', nm('0,7'), 1);
+ck('teto aplicado', nm(99999), T.MAX_MINUTES);
+ck('teto aplicado em string', nm('1e9'), T.MAX_MINUTES);
+// Infinity não é duração: cai fora em vez de virar o teto.
+ck('Infinity é rejeitado', nm(Infinity), null);
+ck('-Infinity é rejeitado', nm(-Infinity), null);
+ck('NaN é rejeitado', nm(NaN), null);
+
+// o valor normalizado tem que produzir um bloco coerente
+const custom = T.create(nm('30') * MIN, T0, '2026-09-21');
+ck('bloco de 30 min', custom.blockMs, 30 * MIN);
+ck('bloco no teto fecha', T.isFinished({ ...custom, blockMs: nm(99999) * MIN, accumulatedMs: T.MAX_MINUTES * MIN }, T0), true);
+
+// ---- componente do seletor de duração --------------------------------------
+// Ele é o único caminho para iniciar bloco nas três superfícies, então um erro
+// aqui quebraria todas de uma vez. DOM mínimo, só o que o componente usa.
+function fakeEl(tag) {
+  return {
+    tagName: tag, children: [], className: '', value: '', type: '', attrs: {}, _h: {},
+    classList: { add() {}, remove() {} },
+    addEventListener(t, f) { this._h[t] = f; },
+    appendChild(c) { this.children.push(c); },
+    append(...cs) { this.children.push(...cs); },
+    setAttribute(k, v) { this.attrs[k] = v; },
+    focus() {},
+    set innerHTML(v) { if (!v) this.children = []; },
+    get innerHTML() { return ''; },
+  };
+}
+globalThis.document = { createElement: fakeEl };
+await import('../src/shared/blockpicker.js');
+
+const picked = [];
+const box = fakeEl('div');
+RC.blockPicker.render(box, [45, 56, 75], (m) => picked.push(m));
+const btns = box.children.filter((c) => c.tagName === 'button');
+const field = box.children.find((c) => c.tagName === 'input');
+ck('monta 3 presets + botão iniciar', btns.length, 4);
+ck('monta o campo', !!field, true);
+ck('campo começa vazio', field.value, '');
+ck('teto no atributo max', field.attrs === undefined ? null : field.max, String(T.MAX_MINUTES));
+
+btns[0]._h.click();
+ck('clicar preset dispara', picked, [45]);
+
+field.value = '30';
+field._h.keydown({ key: 'Enter', preventDefault() {} });
+ck('Enter usa o valor digitado', picked, [45, 30]);
+ck('campo é limpo após iniciar', field.value, '');
+
+field.value = 'abc';
+field._h.keydown({ key: 'Enter', preventDefault() {} });
+ck('valor inválido não inicia', picked, [45, 30]);
+ck('campo inválido é limpo', field.value, '');
+
+field.value = '20';
+field._h.keydown({ key: 'a', preventDefault() {} });
+ck('outra tecla não inicia', picked, [45, 30]);
+
+field.value = '99999';
+btns[3]._h.click();
+ck('botão iniciar respeita o teto', picked, [45, 30, T.MAX_MINUTES]);
+
+RC.blockPicker.render(box, [], () => {});
+ck('sem presets usa o padrão', box.children.filter((c) => c.tagName === 'button').length, 4);
+
 console.log(fail ? `\n${fail} FALHA(S)` : '\nTodos os testes do cronômetro passaram');
 process.exit(fail ? 1 : 0);

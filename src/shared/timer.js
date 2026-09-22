@@ -14,9 +14,30 @@
   // Tolerância = um batimento perdido + folga pra thread ocupada.
   const GRACE_MS = HEARTBEAT_MS + 2000;
 
+  // Teto de duração de bloco. Existe porque `settle` limita o crédito ao alvo:
+  // um alvo absurdo (digitar 99999 por engano) viraria um bloco que nunca fecha
+  // e acumularia tempo fantasma até alguém notar.
+  const MAX_MINUTES = 600;
+
   RC.timer = {
     HEARTBEAT_MS,
     GRACE_MS,
+    MAX_MINUTES,
+
+    /**
+     * Interpreta o que um campo de texto realmente entrega.
+     * Devolve inteiro de 1 a MAX_MINUTES, ou null quando não dá para usar.
+     */
+    normalizeMinutes(value) {
+      if (value == null) return null;
+      const raw = String(value).trim().replace(',', '.'); // teclado brasileiro
+      if (!raw) return null;
+      const n = Number(raw);
+      if (!Number.isFinite(n)) return null;
+      const rounded = Math.round(n);
+      if (rounded < 1) return null;
+      return Math.min(rounded, MAX_MINUTES);
+    },
 
     create(blockMs, now, day) {
       return {
