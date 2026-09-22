@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Gabaritômetro</h1>
+      <div class="streak" id="streak" title="Dias seguidos estudando">🔥 0</div>
+    </header>
+
+    <section class="today">
+      <div class="goalwrap">
+        <div class="bar"><i id="fill"></i></div>
+        <div class="goalmeta"><span id="goaltxt">0 / 0 hoje</span><span id="deltatxt"></span></div>
+      </div>
+      <div class="grid">
+        <div class="card"><b id="t-total">0</b><span>feitas hoje</span></div>
+        <div class="card hit"><b id="t-hit">0</b><span>acertos</span></div>
+        <div class="card miss"><b id="t-miss">0</b><span>erros</span></div>
+        <div class="card rate"><b id="t-rate">—</b><span>% acerto</span></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Horas líquidas</h2>
+      <div class="grid">
+        <div class="card net"><b id="h-today">—</b><span>hoje</span></div>
+        <div class="card net"><b id="h-week">—</b><span>7 dias</span></div>
+        <div class="card"><b id="h-blocks">0</b><span>blocos hoje</span></div>
+        <div class="card"><b id="h-perq">—</b><span>por questão</span></div>
+      </div>
+      <p class="note" id="hnote"></p>
+    </section>
+
+    <section>
+      <h2>Últimos 30 dias</h2>
+      <div id="spark" class="spark"></div>
+    </section>
+
+    <section>
+      <h2>Acumulado</h2>
+      <div class="grid">
+        <div class="card"><b id="g-total">0</b><span>questões</span></div>
+        <div class="card rate"><b id="g-rate">—</b><span>% acerto</span></div>
+        <div class="card solid" title="Acertos no chute descontados"><b id="g-solid">—</b><span>% domínio</span></div>
+        <div class="card"><b id="g-avg">—</b><span>tempo médio</span></div>
+      </div>
+      <p class="note" id="guessnote"></p>
+    </section>
+
+    <section>
+      <div class="secthead">
+        <h2>Onde você erra mais</h2>
+        <label class="switch"><input type="checkbox" id="bymateria" checked /> só matéria</label>
+      </div>
+      <div id="subjects" class="subjects"></div>
+      <p class="note" id="subjnote"></p>
+    </section>
+
+    <footer>
+      <button id="counter" class="accent">Contar em PDF</button>
+      <button id="opt">Configurações</button>
+    </footer>
+    <footer>
+      <button id="exp">Exportar</button>
+      <button id="resetday" class="danger">Zerar hoje</button>
+    </footer>
+    <script src="../shared/schema.js"></script>
+    <script src="../shared/storage.js"></script>
+    <script src="../shared/stats.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

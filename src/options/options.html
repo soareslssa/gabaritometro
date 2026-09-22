@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Gabaritômetro — Configurações</title>
+    <link rel="stylesheet" href="../popup/popup.css" />
+    <style>
+      body { width: auto; max-width: 560px; margin: 0 auto; padding: 24px; gap: 20px; }
+      .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+      .field label { font-size: 12px; }
+      .field small { color: #7b8699; font-size: 10.5px; }
+      input[type="number"], select {
+        background: #171d29; border: 1px solid #2a3244; color: #e8ecf3;
+        border-radius: 7px; padding: 7px 9px; font-size: 13px; max-width: 200px;
+      }
+      .inline { flex-direction: row; align-items: center; gap: 8px; }
+      .danger { background: #3a1d22; }
+      .danger:hover { background: #4d2329; }
+      #status { font-size: 11px; color: #37d67a; min-height: 14px; }
+    </style>
+  </head>
+  <body>
+    <h1 style="font-size: 16px">Configurações</h1>
+
+    <section>
+      <div class="field">
+        <label for="goal">Meta de questões por dia</label>
+        <input type="number" id="goal" min="1" max="1000" />
+      </div>
+      <div class="field">
+        <label for="slow">Alerta de questão lenta (segundos)</label>
+        <input type="number" id="slow" min="10" max="3600" />
+        <small>O cronômetro do painel fica amarelo ao passar disso.</small>
+      </div>
+      <div class="field">
+        <label for="minsample">Mínimo de questões para ranquear uma matéria</label>
+        <input type="number" id="minsample" min="1" max="100" />
+        <small>Evita que uma matéria com 3 questões apareça como "sua pior".</small>
+      </div>
+      <div class="field">
+        <label for="mode">Se você responder a mesma questão duas vezes no mesmo dia</label>
+        <select id="mode">
+          <option value="first">Vale a primeira resposta (recomendado)</option>
+          <option value="last">Vale a última resposta</option>
+        </select>
+        <small>Em dias diferentes a mesma questão sempre conta de novo — é revisão.</small>
+      </div>
+      <div class="field">
+        <label for="presets">Durações de bloco (minutos, separadas por vírgula)</label>
+        <input type="text" id="presets" placeholder="45, 56, 75" />
+        <small>Viram os botões do cronômetro no painel. Use um valor curto (ex.: 1) para testar.</small>
+      </div>
+      <div class="field">
+        <label for="idle">Pausar após quantos minutos sem atividade</label>
+        <input type="number" id="idle" min="1" max="120" />
+        <small>Sem mouse, teclado ou scroll por esse tempo, o cronômetro para sozinho e retoma quando você volta.</small>
+      </div>
+      <div class="field">
+        <label for="simsize">Questões por bloco no modo simulado</label>
+        <input type="number" id="simsize" min="1" max="500" />
+        <small>O gabarito fica escondido até fechar o bloco; aí sai o resultado consolidado.</small>
+      </div>
+      <div class="field inline">
+        <input type="checkbox" id="panel" />
+        <label for="panel">Mostrar o painel flutuante na página do TEC</label>
+      </div>
+    </section>
+
+    <section>
+      <h2>Dados</h2>
+      <p class="note" id="summary"></p>
+      <div style="display: flex; gap: 6px; margin-top: 8px">
+        <button id="exp">Exportar JSON</button>
+        <button id="imp">Importar JSON</button>
+        <button id="reset" class="danger">Apagar tudo</button>
+      </div>
+      <input type="file" id="file" accept="application/json" hidden />
+      <p class="note">Tudo fica no seu navegador (chrome.storage.local). Nada é enviado para servidor nenhum.</p>
+    </section>
+
+    <p id="status"></p>
+
+    <script src="../shared/schema.js"></script>
+    <script src="../shared/storage.js"></script>
+    <script src="../shared/stats.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>

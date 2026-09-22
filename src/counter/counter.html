@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Gabaritômetro — Contador</title>
+    <link rel="stylesheet" href="../popup/popup.css" />
+    <link rel="stylesheet" href="counter.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Contador</h1>
+      <div class="streak" id="clock" title="Horas líquidas">0:00</div>
+    </header>
+
+    <!-- Estado 1: nenhuma lista aberta -->
+    <section id="setup">
+      <h2>Nova lista</h2>
+      <div class="field">
+        <label for="materia">Matéria</label>
+        <input type="text" id="materia" list="materias" placeholder="Português" autocomplete="off" />
+        <datalist id="materias"></datalist>
+      </div>
+      <div class="two">
+        <div class="field">
+          <label for="assunto">Assunto</label>
+          <input type="text" id="assunto" list="assuntos" placeholder="Crase" autocomplete="off" />
+          <datalist id="assuntos"></datalist>
+        </div>
+        <div class="field">
+          <label for="banca">Banca</label>
+          <input type="text" id="banca" list="bancas" placeholder="FGV" autocomplete="off" />
+          <datalist id="bancas"></datalist>
+        </div>
+      </div>
+      <div class="field">
+        <label for="nome">Nome da lista (opcional)</label>
+        <input type="text" id="nome" placeholder="Prova TJ-RS 2025" autocomplete="off" />
+      </div>
+      <button id="start" class="primary">Iniciar lista</button>
+      <p class="note" id="setupnote"></p>
+    </section>
+
+    <!-- Estado 2: lista em andamento -->
+    <section id="running" hidden>
+      <div class="listhead">
+        <span id="listlabel"></span>
+        <span id="listelapsed"></span>
+      </div>
+      <div class="grid">
+        <div class="card"><b id="l-total">0</b><span>feitas</span></div>
+        <div class="card hit"><b id="l-hit">0</b><span>certas</span></div>
+        <div class="card miss"><b id="l-miss">0</b><span>erradas</span></div>
+        <div class="card rate"><b id="l-rate">—</b><span>% acerto</span></div>
+      </div>
+
+      <div class="big">
+        <button id="b-ok" class="huge ok">Acertei</button>
+        <button id="b-no" class="huge no">Errei</button>
+      </div>
+      <div class="row3">
+        <button id="b-nul">Anulada</button>
+        <button id="b-guess">🎲 Chutei</button>
+        <button id="b-undo">↶ Desfazer</button>
+      </div>
+      <p class="note" id="runnote">⏱ 0s nesta questão</p>
+      <button id="finish" class="danger-soft">Finalizar lista</button>
+    </section>
+
+    <!-- Estado 3: lista finalizada -->
+    <section id="done" hidden>
+      <h2>Lista finalizada</h2>
+      <div class="grid">
+        <div class="card"><b id="d-total">0</b><span>feitas</span></div>
+        <div class="card rate"><b id="d-rate">—</b><span>% acerto</span></div>
+        <div class="card"><b id="d-avg">—</b><span>por questão</span></div>
+      </div>
+      <p class="note" id="donenote"></p>
+      <button id="again" class="primary">Nova lista</button>
+    </section>
+
+    <footer>
+      <button id="openpopup">Ver estatísticas</button>
+    </footer>
+
+    <script src="../shared/schema.js"></script>
+    <script src="../shared/storage.js"></script>
+    <script src="../shared/stats.js"></script>
+    <script src="../shared/timer.js"></script>
+    <script src="../content/clock.js"></script>
+    <script src="counter.js"></script>
+  </body>
+</html>

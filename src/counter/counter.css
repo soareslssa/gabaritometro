@@ -1,0 +1,37 @@
+/* Complementa popup.css — a janela do contador é mais larga e tem alvos maiores,
+   porque é usada de relance enquanto você lê o PDF ao lado. */
+body { width: auto; min-width: 300px; }
+
+.field { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
+.field label { font-size: 10px; color: #8b97ab; text-transform: uppercase; letter-spacing: 0.4px; }
+.field input {
+  background: #171d29; border: 1px solid #2a3244; color: #e8ecf3;
+  border-radius: 7px; padding: 7px 9px; font-size: 13px; width: 100%;
+}
+.field input:focus { outline: none; border-color: #4ea8ff; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+button.primary { background: #4ea8ff; color: #0d1117; font-weight: 600; padding: 9px; }
+button.primary:hover { background: #6fb8ff; }
+button.danger-soft { background: #2b2230; color: #d9b8ff; margin-top: 8px; }
+button.danger-soft:hover { background: #3a2d42; }
+
+.listhead { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: #b9c4d6; margin-bottom: 7px; }
+.listhead span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.big { display: flex; gap: 6px; margin-top: 10px; }
+.huge {
+  flex: 1; padding: 18px 0; font-size: 15px; font-weight: 700;
+  color: #0d1117; border-radius: 9px;
+}
+.huge.ok { background: #37d67a; }
+.huge.ok:hover { background: #4be58a; }
+.huge.no { background: #ff6b6b; }
+.huge.no:hover { background: #ff8080; }
+.row3 { display: flex; gap: 5px; margin-top: 6px; }
+.row3 button { font-size: 10.5px; padding: 7px 2px; }
+#b-guess.on { background: #f2b63c; color: #0d1117; font-weight: 600; }
+
+#clock { font-variant-numeric: tabular-nums; }
+#clock.running { color: #37d67a; }
+#clock.paused { color: #f2b63c; }
