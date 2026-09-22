@@ -9,8 +9,19 @@
   <body>
     <header>
       <h1>Contador</h1>
-      <div class="streak" id="clock" title="Horas líquidas">0:00</div>
     </header>
+
+    <section class="blockbox" id="blockbox">
+      <div class="blocktop">
+        <span class="btime" id="b-time">0:00</span>
+        <span class="btarget" id="b-target">hora líquida</span>
+        <button class="bbtn" id="b-toggle" title="Pausar / retomar">&#9208;</button>
+        <button class="bbtn" id="b-stop" title="Encerrar bloco">&#9632;</button>
+      </div>
+      <div class="bar"><i id="b-fill"></i></div>
+      <div class="presets" id="b-presets"></div>
+      <div class="bstate" id="b-state">nenhum bloco em curso</div>
+    </section>
 
     <!-- Estado 1: nenhuma lista aberta -->
     <section id="setup">
@@ -83,6 +94,7 @@
     </footer>
 
     <script src="../shared/schema.js"></script>
+    <script src="../shared/presence.js"></script>
     <script src="../shared/storage.js"></script>
     <script src="../shared/stats.js"></script>
     <script src="../shared/timer.js"></script>

@@ -19,6 +19,7 @@
     timer: 'rc_timer',
     time: 'rc_time',
     list: 'rc_list',
+    presence: 'rc_presence',
   };
 
   /** Lista de questões em curso (um agrupamento que você abre e fecha). */

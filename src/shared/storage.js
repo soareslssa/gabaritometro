@@ -19,6 +19,20 @@
     return chrome.storage.local.get(keys);
   }
 
+  /**
+   * Credita tempo no objeto `time` em memória, sem gravar.
+   * Existe separado de `commitTime` para poder ser chamado de dentro de outra
+   * operação já serializada — `serial()` dentro de `serial()` travaria a fila.
+   */
+  function applyTime(time, day, materia, ms, closedBlock) {
+    const d = time[day] || (time[day] = { totalMs: 0, blocks: 0, byMateria: {} });
+    d.totalMs += ms;
+    if (closedBlock) d.blocks += 1;
+    const key = materia || '—';
+    d.byMateria[key] = (d.byMateria[key] || 0) + ms;
+    return d;
+  }
+
   RC.store = {
     async getSettings() {
       const r = await get(K.settings);
@@ -329,13 +343,61 @@
       return serial(async () => {
         const r = await get(K.time);
         const time = r[K.time] || {};
-        const d = time[day] || (time[day] = { totalMs: 0, blocks: 0, byMateria: {} });
-        d.totalMs += ms;
-        if (closedBlock) d.blocks += 1;
-        const key = materia || '—';
-        d.byMateria[key] = (d.byMateria[key] || 0) + ms;
+        const d = applyTime(time, day, materia, ms, closedBlock);
         await chrome.storage.local.set({ [K.time]: time });
         return d;
+      });
+    },
+
+    /**
+     * Fecha o trecho em curso, credita o pendente e grava — tudo numa única
+     * operação serializada.
+     *
+     * Precisa ser atômico porque três superfícies (painel do TEC, janela do
+     * contador, popup) podem pausar o mesmo bloco. Se duas lessem o estado,
+     * calculassem o pendente e gravassem em paralelo, o mesmo tempo seria
+     * creditado duas vezes.
+     */
+    async settleTimer(now, reason, closedBlock) {
+      return serial(async () => {
+        const r = await get([K.timer, K.time]);
+        const s = r[K.timer];
+        if (!s) return null;
+
+        const settled = RC.timer.settle(s, now);
+        const pending = settled.accumulatedMs - (settled.committedMs || 0);
+        const time = r[K.time] || {};
+        if (pending > 0) {
+          applyTime(time, settled.day, RC.timer.dominantMateria(settled), pending, !!closedBlock);
+          settled.committedMs = settled.accumulatedMs;
+        } else if (closedBlock && settled.committedMs == null) {
+          settled.committedMs = settled.accumulatedMs;
+        }
+
+        if (closedBlock) {
+          settled.finished = true;
+          settled.pausedReason = null;
+        } else if (reason) {
+          settled.pausedReason = reason;
+        }
+
+        await chrome.storage.local.set({ [K.timer]: settled, [K.time]: time });
+        return settled;
+      });
+    },
+
+    // ---- presença das superfícies -------------------------------------------
+    async getPresence() {
+      const r = await get(K.presence);
+      return r[K.presence] || {};
+    },
+
+    async touchPresence(token, kind, visible) {
+      return serial(async () => {
+        const r = await get(K.presence);
+        const next = RC.presence.touch(r[K.presence] || {}, token, kind, !!visible, Date.now());
+        await chrome.storage.local.set({ [K.presence]: next });
+        return next;
       });
     },
 

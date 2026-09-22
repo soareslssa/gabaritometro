@@ -3,6 +3,8 @@
  * Sem alarms nem rede — só reage a mudanças no storage.
  */
 import '../shared/schema.js';
+import '../shared/presence.js';
+import '../shared/timer.js';
 import '../shared/storage.js';
 
 const RC = globalThis.RC;
@@ -41,27 +43,27 @@ function notifyBlockFinished(msg) {
  */
 const COUNTER_URL = chrome.runtime.getURL('src/counter/counter.html');
 
-async function openCounter() {
+async function openCounter(blockMinutes) {
   try {
-    const existing = await chrome.runtime.getContexts({
-      contextTypes: ['TAB'],
-      documentUrls: [COUNTER_URL],
-    });
-    if (existing && existing.length) {
+    // Filtra por prefixo: a URL pode carregar ?block=N.
+    const all = await chrome.runtime.getContexts({ contextTypes: ['TAB'] });
+    const existing = (all || []).filter((c) => c.documentUrl && c.documentUrl.startsWith(COUNTER_URL));
+    if (existing.length) {
       await chrome.windows.update(existing[0].windowId, { focused: true, drawAttention: true });
       return;
     }
   } catch (_) {
     // getContexts não disponível: cai para abrir uma nova.
   }
-  await chrome.windows.create({ url: COUNTER_URL, type: 'popup', width: 360, height: 620 });
+  const url = blockMinutes ? `${COUNTER_URL}?block=${encodeURIComponent(blockMinutes)}` : COUNTER_URL;
+  await chrome.windows.create({ url, type: 'popup', width: 360, height: 680 });
 }
 
 chrome.runtime.onMessage.addListener((msg) => {
   if (!msg) return;
   if (msg.type === 'rc:recorded') updateBadge();
   if (msg.type === 'rc:blockFinished') notifyBlockFinished(msg);
-  if (msg.type === 'rc:openCounter') openCounter();
+  if (msg.type === 'rc:openCounter') openCounter(msg.block);
 });
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && (changes[RC.KEYS.days] || changes[RC.KEYS.settings])) updateBadge();

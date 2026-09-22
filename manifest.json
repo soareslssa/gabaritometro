@@ -37,9 +37,10 @@
       "matches": ["https://www.tecconcursos.com.br/*"],
       "js": [
         "src/shared/schema.js",
+        "src/shared/presence.js",
+        "src/shared/timer.js",
         "src/shared/storage.js",
         "src/shared/stats.js",
-        "src/shared/timer.js",
         "src/content/simulado.js",
         "src/content/clock.js",
         "src/content/bridge.js",

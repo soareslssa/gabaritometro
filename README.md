@@ -93,19 +93,38 @@ agregados antigos legítimos de quem já tem histórico longo. Tem teste especí
 
 ## Horas líquidas
 
-Cronômetro de blocos no painel, com presets configuráveis (padrão 45 / 56 / 75 min). Ele **para
-sozinho** quando você não está estudando e retoma quando volta:
+Cronômetro de blocos com presets configuráveis (padrão 45 / 56 / 75 min), controlável em três
+lugares: **painel do TEC**, **janela do contador** e **popup do ícone**. Ele **para sozinho** quando
+você não está estudando e retoma quando volta:
 
 | situação | comportamento |
 |---|---|
-| troca de aba, minimiza, bloqueia a tela | pausa; retoma ao voltar |
-| 5 min sem mouse/teclado/scroll | pausa; retoma no primeiro movimento |
+| lendo PDF em outra aba, janela do contador aberta | **continua contando** |
+| nenhuma janela da extensão visível | pausa; retoma quando uma voltar |
+| minimiza ou fecha a janela do contador | pausa |
+| 5 min sem mouse/teclado **no TEC** | pausa; retoma no primeiro movimento |
 | navega para outra questão (reload do TEC) | acumulado preservado, continua |
 | Chrome fechado à força / máquina desligada | credita só até o último batimento |
-| você pausa no botão | **não** retoma sozinho ao voltar — pausa sua é intencional |
+| você pausa no botão | **não** retoma sozinho — pausa sua é intencional |
 
-Não pausa quando a janela perde o foco mas continua visível: estudar com um PDF ao lado é uso
-normal, e pausar aí tornaria o número inútil.
+O bloco é sustentado enquanto **qualquer** superfície da extensão estiver visível, não por aba.
+Decidir por aba era o defeito original: ler um PDF em outra aba deixava a aba do TEC oculta e o
+cronômetro morria exatamente quando devia contar.
+
+### Estudando fora do TEC
+
+A janela do contador é a **âncora** do bloco: enquanto ela estiver visível ao lado do PDF, o tempo
+corre. Iniciar um bloco pelo popup abre essa janela junto — o popup fecha ao perder o foco, então
+um bloco criado ali sem nenhuma superfície viva não acumularia nada.
+
+**Limitação assumida:** na janela do contador não existe detecção de ociosidade. A ausência de
+`mousemove` numa janela fora de foco não informa nada — manter a regra ali só produziria pausas
+falsas no meio do estudo. Então, se você deixar a janela aberta e sair de perto, o tempo continua
+contando. O dano é limitado ao alvo do bloco (`settle` não deixa estourar `blockMs`): num bloco de
+45 min o máximo que se ganha é o que faltava para fechar os 45, nunca uma noite inteira. Resolver
+isso de vez exigiria a permissão `idle` do Chrome, deliberadamente não adotada.
+
+Tempo de leitura sem questões respondidas entra no total do dia **sem matéria** (aparece como "—").
 
 ### Por que o tempo não pode ser inventado
 
@@ -121,8 +140,14 @@ creditado = min(agora, heartbeatAt + tolerância) - startedAt
 O pior caso é perder 5 segundos reais; nunca ganhar horas fantasmas. O acumulado também é limitado
 ao alvo do bloco — um bloco de 45 min jamais credita 46, mesmo que a máquina hiberne no meio.
 
-**Múltiplas abas**: cada aba tem um token e só a dona acumula, senão duas janelas do TEC abertas
-contariam o mesmo tempo duas vezes.
+**Múltiplas superfícies**: cada uma tem um token e só a dona do bloco acumula, senão duas janelas
+contariam o mesmo tempo duas vezes. Se a dona sai de cena (aba fechada), a próxima superfície viva
+assume o bloco — sem isso ninguém bateria o heartbeat e o clamp cortaria o tempo de quem está
+estudando.
+
+O fechamento do bloco (settle + crédito + gravação) é uma **única operação serializada** no storage,
+porque três superfícies podem pausar o mesmo bloco; se duas lessem o pendente e gravassem em
+paralelo, o mesmo tempo entraria em dobro.
 
 O bloco é creditado à matéria **dominante** (a com mais questões respondidas nele), não rateado
 questão a questão. Para quem estuda um assunto por bloco, é o comportamento certo; se você misturar
@@ -148,7 +173,13 @@ desligar o painel, e **exportar / importar / apagar** os dados (JSON).
 node scripts/test-logic.mjs
 node scripts/test-timer.mjs
 node scripts/test-list.mjs
+node scripts/test-presence.mjs
 ```
+
+`test-presence.mjs` — 26 asserções sobre presença entre superfícies e fechamento do bloco: aba do
+TEC oculta com o contador visível continua sustentando, presença vencida não sustenta, `settleTimer`
+é idempotente (pausar de duas superfícies não credita o tempo duas vezes), o clamp do batimento
+sobrevive à troca de superfície, e os rótulos de estado compartilhados.
 
 `test-list.mjs` — 26 asserções sobre listas, origem e reset: ciclo da lista, herança de
 matéria/assunto/banca, ids únicos, split TEC × PDF, `resetDay` preservando os dias anteriores e

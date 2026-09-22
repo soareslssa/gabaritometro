@@ -72,6 +72,88 @@
       : 'Inicie um bloco no painel do TEC para contar horas líquidas.';
   }
 
+  /**
+   * Widget do bloco de estudo.
+   *
+   * O popup NÃO carrega o clock.js: ele fecha ao perder o foco, então não pode
+   * ser a superfície que tiqueta. Ele escreve o estado no storage e delega a
+   * contagem à janela do contador (ou ao painel do TEC), que é quem fica vivo.
+   * Por isso iniciar um bloco aqui também abre aquela janela — sem uma
+   * superfície viva, o bloco não acumularia nada.
+   */
+  let timerState = null;
+
+  function renderBlock() {
+    const s = timerState;
+    const now = Date.now();
+    const row = $('blockrow');
+    const running = !!(s && s.running);
+    const done = !!(s && s.finished);
+    row.classList.toggle('running', running);
+    row.classList.toggle('paused', !!s && !running && !done);
+    row.classList.toggle('done', done);
+
+    const live = s && !done;
+    $('b-presets').style.display = live ? 'none' : 'flex';
+    $('b-toggle').style.display = live ? '' : 'none';
+    $('b-stop').style.display = live ? '' : 'none';
+    $('b-state').textContent = RC.timer.label(s, now).text;
+
+    if (!s) {
+      $('b-time').textContent = '0:00';
+      $('b-fill').style.width = '0%';
+      $('bnote').textContent = 'Iniciar um bloco abre a janela do contador, que é quem mantém a contagem.';
+      return;
+    }
+    const el = RC.timer.elapsedMs(s, now);
+    $('b-time').textContent = RC.fmtClock(el);
+    $('b-fill').style.width = Math.min(100, (el / s.blockMs) * 100) + '%';
+    $('b-toggle').innerHTML = running ? '&#9208;' : '&#9205;';
+    $('bnote').textContent = done
+      ? 'Bloco fechado. As horas já entraram no total do dia.'
+      : 'A contagem corre na janela do contador; fechá-la ou minimizá-la pausa.';
+  }
+
+  async function startBlock(minutes) {
+    const now = Date.now();
+    const fresh = RC.timer.create(Math.max(1, minutes) * 60000, now, RC.dayKey(now));
+    fresh.committedMs = 0;
+    // owner nulo: a primeira superfície viva assume o bloco.
+    timerState = await RC.store.setTimer(RC.timer.resume(fresh, now, null));
+    renderBlock();
+    chrome.runtime.sendMessage({ type: 'rc:openCounter', block: minutes });
+    window.close();
+  }
+
+  function renderBlockPresets(presets) {
+    const el = $('b-presets');
+    el.innerHTML = '';
+    for (const min of presets || [45, 56, 75]) {
+      const b = document.createElement('button');
+      b.className = 'preset';
+      b.textContent = `${min}min`;
+      b.addEventListener('click', () => startBlock(min));
+      el.appendChild(b);
+    }
+  }
+
+  $('b-toggle').addEventListener('click', async () => {
+    if (!timerState) return;
+    if (timerState.running) {
+      timerState = await RC.store.settleTimer(Date.now(), 'user', false);
+    } else {
+      timerState = await RC.store.setTimer(RC.timer.resume(timerState, Date.now(), null));
+    }
+    renderBlock();
+  });
+
+  $('b-stop').addEventListener('click', async () => {
+    if (!timerState) return;
+    timerState = await RC.store.settleTimer(Date.now(), null, true);
+    renderBlock();
+    render();
+  });
+
   /** Split TEC × PDF: lido dos attempts, sem inflar a árvore de agregados. */
   function renderOrigin(attempts) {
     let tec = 0;
@@ -85,6 +167,9 @@
 
   async function render() {
     const { days, subjects, streak, settings, time, attempts } = await RC.store.getAll();
+    timerState = await RC.store.getTimer();
+    renderBlockPresets(settings.blockPresets);
+    renderBlock();
     renderTime(time || {}, days);
 
     const t = RC.stats.today(days);

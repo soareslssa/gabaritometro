@@ -1,29 +1,39 @@
 /**
  * Cronômetro de blocos ("horas líquidas") — a parte que conversa com o
- * navegador. A lógica de tempo em si mora em src/shared/timer.js.
+ * navegador. A lógica de tempo mora em src/shared/timer.js e a de presença em
+ * src/shared/presence.js.
  *
- * Pausa sozinho quando:
- *   - a aba fica oculta (troca de aba, minimizar, bloquear a tela)
- *   - você fica N minutos sem mouse/teclado/scroll
- *   - a página é descarregada (navegar no TEC é reload completo)
- * Retoma sozinho ao voltar — exceto se a pausa tiver sido sua, no botão.
+ * Roda em duas superfícies: no painel do TEC (content script) e na janela do
+ * contador (página da extensão). `KIND` distingue as duas sem script inline,
+ * que o CSP de página de extensão bloquearia.
  *
- * Não pausa por perda de foco com a janela ainda visível: estudar com um PDF
- * aberto ao lado é uso normal, e pausar aí tornaria o número inútil.
+ * O bloco é sustentado enquanto QUALQUER superfície estiver visível. Decidir
+ * por aba era o defeito antigo: ler um PDF em outra aba deixa a aba do TEC
+ * oculta, e o cronômetro morria exatamente no momento em que devia contar.
+ *
+ * Ociosidade por evento de página só vale no TEC, onde você interage com a
+ * página. Na janela do contador, a ausência de `mousemove` numa janela fora de
+ * foco não informa nada — manter a regra ali só geraria pausa falsa no meio do
+ * estudo. Em troca, deixar a janela aberta e sair de perto conta tempo; o dano
+ * é limitado ao alvo do bloco, que `settle` já não deixa estourar.
  */
 (() => {
   'use strict';
   const RC = globalThis.RC;
   const T = RC.timer;
+  const P = RC.presence;
 
   const TICK_MS = 1000;
-  // Token desta aba: evita que duas janelas do TEC contem o mesmo tempo duas vezes.
-  const TAB = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const KIND = location.protocol === 'chrome-extension:' ? 'counter' : 'tec';
+  // Token desta superfície: identifica dono do bloco e entrada de presença.
+  const TAB = `${KIND}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   let state = null;
+  let presence = {};
   let settings = RC.DEFAULT_SETTINGS;
   let lastActivity = Date.now();
   let lastBeat = 0;
+  let lastPresenceBeat = 0;
   let ticking = null;
   let booted = false;
 
@@ -31,7 +41,7 @@
   const emit = () => listeners.forEach((fn) => { try { fn(state); } catch (_) {} });
 
   const idleMs = () => Math.max(30, (settings.idleMinutes || 5) * 60) * 1000;
-  const isOwner = () => !state || !state.owner || state.owner === TAB;
+  const visible = () => !document.hidden;
 
   async function persist(next) {
     state = next;
@@ -40,61 +50,92 @@
   }
 
   /**
-   * Credita o tempo acumulado no histórico e zera o acumulador do bloco.
-   * Chamado ao pausar, ao fechar a página e ao encerrar o bloco — por isso
-   * precisa ser idempotente: o que já foi creditado sai do acumulado.
+   * Assume o bloco se ele está órfão — sem dono, ou com um dono que não
+   * reporta mais presença (aba fechada). Sem isso, o dono ir para segundo
+   * plano deixaria ninguém batendo, e o clamp do batimento cortaria o tempo
+   * de quem está estudando.
    */
-  async function flush(closedBlock) {
-    if (!state) return;
-    const settled = T.settle(state, Date.now());
-    const pending = settled.accumulatedMs - (settled.committedMs || 0);
-    if (pending > 0) {
-      await RC.store.commitTime(settled.day, T.dominantMateria(settled), pending, !!closedBlock);
-      settled.committedMs = settled.accumulatedMs;
+  function claimIfOrphan(now) {
+    if (!state || !state.running) return false;
+    const owner = state.owner;
+    if (owner === TAB) return true;
+    const ownerAlive = owner && P.prune(presence, now)[owner];
+    if (!owner || !ownerAlive) {
+      state = { ...state, owner: TAB };
+      RC.store.setTimer(state);
+      return true;
     }
-    return settled;
+    return false;
+  }
+
+  const isOwner = () => !!state && state.owner === TAB;
+
+  /** Settle + crédito + gravação, atômico no storage (ver RC.store.settleTimer). */
+  async function settle(reason, closedBlock) {
+    const next = await RC.store.settleTimer(Date.now(), reason, closedBlock);
+    if (next) {
+      state = next;
+      emit();
+    }
+    return next;
   }
 
   async function pause(reason) {
     if (!state || !state.running) return;
-    const settled = await flush(false);
-    await persist({ ...settled, pausedReason: reason });
+    await settle(reason, false);
   }
 
   async function resume(auto) {
     if (!state || state.finished) return;
     if (auto && !T.canAutoResume(state)) return;
-    lastActivity = Date.now();
-    await persist(T.resume(state, Date.now(), TAB));
+    const now = Date.now();
+    lastActivity = now;
+    lastBeat = now;
+    await persist(T.resume(state, now, TAB));
   }
 
   async function finish() {
-    const settled = await flush(true);
-    const materia = T.dominantMateria(settled);
-    await persist({ ...settled, running: false, finished: true, pausedReason: null });
+    const before = state;
+    const next = await settle(null, true);
     chrome.runtime
       .sendMessage({
         type: 'rc:blockFinished',
-        minutes: Math.round(settled.blockMs / 60000),
-        materia,
+        minutes: Math.round(((next || before).blockMs || 0) / 60000),
+        materia: T.dominantMateria(next || before),
       })
       .catch(() => {});
   }
 
   // ---- laço principal -----------------------------------------------------
   async function tick() {
-    if (!state || !state.running || !isOwner()) return;
     const now = Date.now();
+
+    // Presença primeiro: é o que sustenta o bloco para as outras superfícies.
+    if (now - lastPresenceBeat >= P.BEAT_MS) {
+      lastPresenceBeat = now;
+      presence = await RC.store.touchPresence(TAB, KIND, visible());
+    }
+
+    if (!state || !state.running) return;
+    if (!claimIfOrphan(now) && !isOwner()) return;
 
     if (T.isFinished(state, now)) {
       await finish();
       return;
     }
-    if (now - lastActivity > idleMs()) {
+
+    // Ninguém visível em nenhuma superfície: ninguém está estudando.
+    if (!P.anyVisible(presence, now)) {
+      await pause('hidden');
+      return;
+    }
+
+    // Ociosidade só faz sentido onde você interage com a página.
+    if (KIND === 'tec' && visible() && now - lastActivity > idleMs()) {
       await pause('idle');
       return;
     }
-    // Batimento: é ele que limita o crédito se o navegador morrer de repente.
+
     if (now - lastBeat >= T.HEARTBEAT_MS) {
       lastBeat = now;
       state = T.beat(state, now);
@@ -116,8 +157,7 @@
       if (throttled) return;
       throttled = true;
       setTimeout(() => (throttled = false), 1000);
-      // Voltou a mexer depois de uma pausa por ociosidade: retoma sozinho.
-      if (state && !state.running && state.pausedReason === 'idle' && !document.hidden) resume(true);
+      if (state && !state.running && state.pausedReason === 'idle' && visible()) resume(true);
     };
   })();
 
@@ -125,31 +165,36 @@
     window.addEventListener(ev, noteActivity, { passive: true, capture: true })
   );
 
-  document.addEventListener('visibilitychange', () => {
+  document.addEventListener('visibilitychange', async () => {
     if (!booted) return;
-    if (document.hidden) pause('hidden');
-    else {
-      lastActivity = Date.now();
-      resume(true);
+    const now = Date.now();
+    presence = await RC.store.touchPresence(TAB, KIND, visible());
+
+    if (!visible()) {
+      // Só pausa se mais ninguém estiver sustentando o bloco.
+      if (!P.anyVisible(presence, now)) await pause('hidden');
+      return;
     }
+    lastActivity = now;
+    await resume(true);
   });
 
-  // Navegar dentro do TEC recarrega a página: grava antes de sair.
+  // Navegar dentro do TEC recarrega a página: some da presença e grava o que deve.
   window.addEventListener('pagehide', () => {
+    RC.store.touchPresence(TAB, KIND, false);
     if (!state || !state.running) return;
-    const settled = T.settle(state, Date.now());
-    const pending = settled.accumulatedMs - (settled.committedMs || 0);
-    settled.pausedReason = 'hidden';
-    // pagehide não espera promise; o set é disparado e o SW conclui.
-    if (pending > 0) RC.store.commitTime(settled.day, T.dominantMateria(settled), pending, false);
-    settled.committedMs = settled.accumulatedMs;
-    RC.store.setTimer(settled);
+    // pagehide não espera promise; dispara e o storage conclui.
+    RC.store.settleTimer(Date.now(), 'hidden', false);
   });
 
-  // ---- API usada pelo painel ---------------------------------------------
+  // ---- API usada pelas superfícies ---------------------------------------
   RC.clock = {
+    KIND,
     get state() {
       return state;
+    },
+    get presence() {
+      return presence;
     },
     onChange: (fn) => listeners.add(fn),
 
@@ -157,9 +202,8 @@
       const now = Date.now();
       const fresh = T.create(Math.max(1, minutes) * 60000, now, RC.dayKey(now));
       fresh.committedMs = 0;
+      presence = await RC.store.touchPresence(TAB, KIND, visible());
       await persist(T.resume(fresh, now, TAB));
-      lastActivity = now;
-      lastBeat = now;
     },
 
     async toggle() {
@@ -171,8 +215,7 @@
     /** Encerra o bloco antes da hora, creditando o que já foi feito. */
     async stop() {
       if (!state) return;
-      const settled = await flush(true);
-      await persist({ ...settled, running: false, finished: true, pausedReason: null });
+      await settle(null, true);
     },
 
     async dismiss() {
@@ -192,17 +235,16 @@
   // ---- boot ---------------------------------------------------------------
   (async () => {
     settings = await RC.store.getSettings();
+    presence = await RC.store.touchPresence(TAB, KIND, visible());
     const stored = await RC.store.getTimer();
 
     if (stored) {
-      // Se ficou `running` no storage, ou a página foi recarregada ou o
-      // navegador morreu. settle() aplica o teto do batimento e devolve
-      // só o tempo que realmente existiu.
-      state = stored.running ? T.settle(stored, Date.now()) : stored;
-      if (stored.running) {
-        state.pausedReason = 'hidden';
-        await flush(false);
-        await RC.store.setTimer(state);
+      // Ficou `running` no storage: ou a página recarregou, ou o navegador
+      // morreu. settleTimer aplica o teto do batimento e credita só o tempo
+      // que existiu de fato.
+      state = stored;
+      if (stored.running && !P.anyVisibleExcept(presence, TAB, Date.now())) {
+        state = (await RC.store.settleTimer(Date.now(), 'hidden', false)) || stored;
       }
     }
 
@@ -210,7 +252,15 @@
     startTicking();
     emit();
 
-    // Retoma sozinho se a aba está visível e a pausa não foi sua.
-    if (state && !document.hidden) resume(true);
+    if (state && visible()) resume(true);
   })();
+
+  // Outra superfície mexeu no bloco: reflete sem esperar o próximo tique.
+  chrome.storage.onChanged.addListener(async (changes) => {
+    if (changes[RC.KEYS.timer]) {
+      state = changes[RC.KEYS.timer].newValue || null;
+      emit();
+    }
+    if (changes[RC.KEYS.presence]) presence = changes[RC.KEYS.presence].newValue || {};
+  });
 })();

@@ -197,12 +197,6 @@
   });
 
   // ---- cronômetro de blocos ------------------------------------------------
-  const PAUSE_LABEL = {
-    user: 'pausado por você',
-    hidden: 'pausado — aba em segundo plano',
-    idle: 'pausado — sem atividade',
-  };
-
   function renderPresets() {
     const el = $('c-presets');
     el.innerHTML = '';
@@ -243,18 +237,12 @@
     $('c-fill').style.width = Math.min(100, (el / s.blockMs) * 100) + '%';
     $('c-toggle').innerHTML = running ? '&#9208;' : '&#9205;';
 
+    // Rótulo vem de RC.timer.label: painel, contador e popup mostram o mesmo.
+    const lbl = RC.timer.label(s, Date.now());
     const st = $('c-state');
-    if (done) {
-      st.className = 'cstate done';
-      const mat = RC.timer.dominantMateria(s);
-      st.textContent = `bloco concluído — ${RC.fmtHours(el)}${mat ? ' · ' + mat : ''}`;
-    } else if (running) {
-      st.className = 'cstate';
-      st.textContent = `faltam ${RC.fmtClock(RC.timer.remainingMs(s, Date.now()))}`;
-    } else {
-      st.className = 'cstate paused';
-      st.textContent = PAUSE_LABEL[s.pausedReason] || 'pausado';
-    }
+    st.className = 'cstate' + (lbl.kind === 'done' ? ' done' : lbl.kind === 'paused' ? ' paused' : '');
+    const mat = done ? RC.timer.dominantMateria(s) : null;
+    st.textContent = lbl.text + (mat ? ' · ' + mat : '');
   }
 
   $('c-toggle').addEventListener('click', () => RC.clock.toggle());

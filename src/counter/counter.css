@@ -32,6 +32,25 @@ button.danger-soft:hover { background: #3a2d42; }
 .row3 button { font-size: 10.5px; padding: 7px 2px; }
 #b-guess.on { background: #f2b63c; color: #0d1117; font-weight: 600; }
 
-#clock { font-variant-numeric: tabular-nums; }
-#clock.running { color: #37d67a; }
-#clock.paused { color: #f2b63c; }
+/* Bloco de horas líquidas — mesmo vocabulário visual do painel do TEC. */
+.blockbox { background: #171d29; border-radius: 8px; padding: 8px 9px; }
+.blocktop { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; }
+.btime { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0.5px; }
+.btarget { font-size: 10px; color: #8b97ab; flex: 1; }
+.bbtn {
+  background: #222a38; border: 1px solid #2a3244; color: #e8ecf3;
+  border-radius: 6px; width: 26px; height: 24px; font-size: 11px; padding: 0; cursor: pointer; flex: none;
+}
+.bbtn:hover { background: #2c3648; }
+.presets { display: flex; gap: 4px; margin-top: 7px; }
+.preset {
+  flex: 1; background: #222a38; border: 1px solid #2a3244; color: #b9c4d6;
+  border-radius: 6px; padding: 6px 0; font-size: 10.5px; cursor: pointer;
+}
+.preset:hover { background: #2c3648; }
+.bstate { font-size: 10px; margin-top: 6px; color: #7b8699; }
+.blockbox.running .btime { color: #37d67a; }
+.blockbox.paused .btime { color: #f2b63c; }
+.blockbox.paused .bstate { color: #f2b63c; }
+.blockbox.done .btime { color: #4ea8ff; }
+.blockbox.done .bstate { color: #37d67a; font-weight: 600; cursor: pointer; }

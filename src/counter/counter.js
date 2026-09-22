@@ -177,19 +177,63 @@
     chrome.tabs.create({ url: chrome.runtime.getURL('src/popup/popup.html') });
   });
 
-  // ---- cronômetro de horas líquidas (mesmo estado do painel do TEC) --------
-  function renderClock(s) {
-    const el = $('clock');
-    el.classList.toggle('running', !!(s && s.running));
-    el.classList.toggle('paused', !!(s && !s.running && !s.finished));
-    el.textContent = s ? RC.fmtClock(RC.timer.elapsedMs(s, Date.now())) : '0:00';
-    el.title = s
-      ? s.running
-        ? `Bloco em curso — faltam ${RC.fmtClock(RC.timer.remainingMs(s, Date.now()))}`
-        : 'Bloco pausado'
-      : 'Nenhum bloco em curso (inicie pelo painel do TEC)';
+  // ---- bloco de horas líquidas ---------------------------------------------
+  // Esta janela é a âncora do bloco quando você estuda fora do TEC: enquanto
+  // ela estiver visível, o cronômetro corre mesmo com o PDF em foco.
+  let settings = RC.DEFAULT_SETTINGS;
+
+  function renderPresets() {
+    const el = $('b-presets');
+    el.innerHTML = '';
+    for (const min of settings.blockPresets || [45, 56, 75]) {
+      const b = document.createElement('button');
+      b.className = 'preset';
+      b.textContent = `${min}min`;
+      b.addEventListener('click', () => RC.clock.start(min));
+      el.appendChild(b);
+    }
   }
+
+  function renderClock(s) {
+    const now = Date.now();
+    const box = $('blockbox');
+    const running = !!(s && s.running);
+    const done = !!(s && s.finished);
+    box.classList.toggle('running', running);
+    box.classList.toggle('paused', !!s && !running && !done);
+    box.classList.toggle('done', done);
+
+    const live = s && !done;
+    $('b-presets').style.display = live ? 'none' : 'flex';
+    $('b-toggle').style.display = live ? '' : 'none';
+    $('b-stop').style.display = live ? '' : 'none';
+
+    const lbl = RC.timer.label(s, now);
+    $('b-state').textContent = lbl.text;
+
+    if (!s) {
+      $('b-time').textContent = '0:00';
+      $('b-target').textContent = 'hora líquida';
+      $('b-fill').style.width = '0%';
+      return;
+    }
+    const el = RC.timer.elapsedMs(s, now);
+    $('b-time').textContent = RC.fmtClock(el);
+    $('b-target').textContent = `/ ${RC.fmtClock(s.blockMs)}`;
+    $('b-fill').style.width = Math.min(100, (el / s.blockMs) * 100) + '%';
+    $('b-toggle').innerHTML = running ? '&#9208;' : '&#9205;';
+  }
+
+  $('b-toggle').addEventListener('click', () => RC.clock.toggle());
+  $('b-stop').addEventListener('click', () => RC.clock.stop());
+  $('b-state').addEventListener('click', () => {
+    const s = RC.clock.state;
+    if (s && s.finished) RC.clock.dismiss();
+  });
   RC.clock.onChange(renderClock);
+  // O relógio precisa andar mesmo sem evento: o tique do clock só emite quando
+  // o bloco está rodando e esta janela é a dona.
+  setInterval(() => renderClock(RC.clock.state), 1000);
 
   // O cronômetro por questão é só visual; o valor gravado usa questionStart.
   setInterval(() => {
@@ -200,12 +244,22 @@
 
   // ---- boot ----------------------------------------------------------------
   (async () => {
+    settings = await RC.store.getSettings();
     await fillSuggestions();
     list = await RC.store.getList();
     if (list && list.materia) lastMateria = list.materia;
     questionStart = Date.now();
     renderList();
+    renderPresets();
     renderClock(RC.clock.state);
+
+    // O popup pede "abra a janela já com um bloco de N min rodando".
+    const params = new URLSearchParams(location.search);
+    const startMin = parseInt(params.get('block'), 10);
+    if (Number.isFinite(startMin) && startMin > 0 && !RC.clock.state) {
+      await RC.clock.start(startMin);
+    }
+
     if (!list) $('materia').focus();
   })();
 

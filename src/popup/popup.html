@@ -24,6 +24,19 @@
     </section>
 
     <section>
+      <h2>Bloco de estudo</h2>
+      <div class="blockrow" id="blockrow">
+        <span class="btime" id="b-time">0:00</span>
+        <span class="bstate" id="b-state">nenhum bloco em curso</span>
+        <button class="bbtn" id="b-toggle" title="Pausar / retomar">&#9208;</button>
+        <button class="bbtn" id="b-stop" title="Encerrar bloco">&#9632;</button>
+      </div>
+      <div class="bar"><i id="b-fill"></i></div>
+      <div class="presets" id="b-presets"></div>
+      <p class="note" id="bnote"></p>
+    </section>
+
+    <section>
       <h2>Horas líquidas</h2>
       <div class="grid">
         <div class="card net"><b id="h-today">—</b><span>hoje</span></div>
@@ -68,6 +81,8 @@
       <button id="resetday" class="danger">Zerar hoje</button>
     </footer>
     <script src="../shared/schema.js"></script>
+    <script src="../shared/presence.js"></script>
+    <script src="../shared/timer.js"></script>
     <script src="../shared/storage.js"></script>
     <script src="../shared/stats.js"></script>
     <script src="popup.js"></script>

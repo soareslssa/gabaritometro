@@ -113,6 +113,27 @@
       return !!s && !s.finished && !s.running && s.pausedReason !== 'user';
     },
 
+    /**
+     * Rótulo de estado do bloco. Fica aqui porque três superfícies (painel do
+     * TEC, janela do contador, popup) mostram a mesma coisa — duplicar o texto
+     * é como elas passam a divergir.
+     */
+    label(s, now) {
+      if (!s) return { kind: 'none', text: 'nenhum bloco em curso' };
+      if (s.finished) {
+        return { kind: 'done', text: `bloco concluído — ${RC.fmtHours(RC.timer.elapsedMs(s, now))}` };
+      }
+      if (s.running) {
+        return { kind: 'running', text: `faltam ${RC.fmtClock(RC.timer.remainingMs(s, now))}` };
+      }
+      const why = {
+        user: 'pausado por você',
+        hidden: 'pausado — nenhuma janela visível',
+        idle: 'pausado — sem atividade',
+      };
+      return { kind: 'paused', text: why[s.pausedReason] || 'pausado' };
+    },
+
     countMateria(s, materia) {
       if (!s || !materia) return s;
       const materiaCount = { ...s.materiaCount, [materia]: (s.materiaCount[materia] || 0) + 1 };
