@@ -8,24 +8,16 @@ credencial do TEC é lida ou tocada.
 
 ## Como funciona
 
-O TEC é uma aplicação AngularJS que mantém o estado da questão em memória. Em vez de adivinhar
-classes CSS (que quebram a cada redesign), a extensão injeta um script no *main world* e lê o
-objeto `vm.questao` direto do scope do Angular:
+A extensão observa a página do TEC para saber quando você respondeu uma questão e qual foi o
+resultado, e registra isso localmente. Ela **apenas lê**: não altera requisições, respostas nem o
+estado da página, não mexe na sua conta e não toca em credenciais.
 
-| campo lido | uso |
-|---|---|
-| `idQuestao` | deduplicação |
-| `correcaoQuestao` | acertou (`true`) / errou (`false`) |
-| `anulada` | sai do denominador da % |
-| `nomeMateria`, `nomeAssunto` | estatística por disciplina |
-| `bancaSigla`, `orgaoSigla`, `concursoAno` | contexto do registro |
-| `vm.caderno` | nome do caderno e totais |
+A leitura não depende de classes CSS — elas quebram a cada redesign do site. Os detalhes de
+implementação ficam em [`src/main/tec-hook.js`](src/main/tec-hook.js), comentado.
 
-O script **só lê** — não altera request, resposta nem estado da página. A observação do XHR
-serve apenas para capturar o resultado no instante da resposta, em vez de esperar o polling.
-
-Se o Angular sumir (reescrita do site), o painel cai automaticamente em **modo manual**:
-botões `Acertei` / `Errei` / `Anul.`, que funcionam em qualquer situação.
+Se o site mudar de tecnologia e a captura automática parar de funcionar, o painel cai sozinho em
+**modo manual**: botões `Acertei` / `Errei` / `Anul.`, que funcionam em qualquer situação — inclusive
+fora do TEC.
 
 ## Instalar
 
@@ -59,16 +51,13 @@ porcentagens é o tamanho da sua zona de risco.
 Botão `Simulado` no painel inicia um bloco de N questões (configurável, padrão 20) com o
 **gabarito escondido**: você responde tudo e só vê o resultado no fim, consolidado.
 
-Detalhe de implementação que custou caro descobrir, anotado para quem for mexer depois: a
-alternativa correta recebe `li.acerto` e fica verde, e **essa cor não é sobrescrevível**. Medido na
-página real — nem regra com 3 ids e `!important`, nem `style` inline com `!important` alteram o
-`background-color` dela, embora outras propriedades da mesma regra (`outline`, `border-color`)
-apliquem normalmente.
+O destaque colorido da alternativa correta **não é sobrescrevível por CSS** nessa página — nem com
+`!important`, nem com estilo inline. Medido, não suposto; o registro do que foi testado está em
+[`src/content/simulado.js`](src/content/simulado.js).
 
-Então o simulado não briga com a cor: depois que a questão é respondida, ele esconde a **lista de
-alternativas inteira** com `display:none` (verificado funcionar e reverter sem reload). Esconder a
-lista toda, e não só a alternativa marcada, é proposital — apagar apenas a certa entregaria a
-resposta pela ausência.
+Por isso o simulado não tenta apagar a cor: depois que a questão é respondida, ele esconde a **lista
+de alternativas inteira**, com CSS, sem tocar no DOM da página. Esconder a lista toda, e não só a
+alternativa marcada, é proposital — apagar apenas a certa entregaria a resposta pela ausência.
 
 ## Contar questões fora do TEC (PDF, prova impressa)
 
