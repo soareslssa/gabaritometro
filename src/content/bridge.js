@@ -152,6 +152,17 @@
   };
 
   // ---- lista em curso -----------------------------------------------------
+  /**
+   * Abre uma lista pelo painel do TEC. Sem matéria/assunto: o TEC traz esses
+   * dados por questão, e `record()` só herda o que vier vazio.
+   */
+  RC.bridge.startList = async function () {
+    const cur = state.current || {};
+    state.list = await RC.store.startList({ origin: 'tec', name: cur.caderno || null });
+    emit({ kind: 'list', list: state.list });
+    return state.list;
+  };
+
   RC.bridge.finishList = async function () {
     state.list = await RC.store.finishList();
     emit({ kind: 'list', list: state.list });

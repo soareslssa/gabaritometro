@@ -73,6 +73,9 @@
       .simbox { background:#171d29; border-radius:8px; padding:7px 8px; display:none; }
       .simbox.show { display:block; }
       .simhead { display:flex; justify-content:space-between; font-size:10px; color:#b9c4d6; margin-bottom:5px; }
+      .scope { font-size:9px; color:#8b97ab; text-transform:uppercase; letter-spacing:.5px;
+               margin-bottom:-4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .scope.list { color:#4ea8ff; }
       .hint { color:#7b8699; font-size:10px; text-align:center; }
       .hint.warn { color:#f2b63c; }
       .collapsed .body { display:none; }
@@ -90,6 +93,7 @@
       </div>
       <div class="mini" id="mini"></div>
       <div class="body">
+        <div class="scope" id="scope">hoje</div>
         <div class="row">
           <div class="stat"><b id="n-total">0</b><span>feitas</span></div>
           <div class="stat hit"><b id="n-hit">0</b><span>certas</span></div>
@@ -124,7 +128,7 @@
           <button class="btn ghost" id="b-guess" title="Acerto no chute não conta como domínio do assunto">🎲 Chutei</button>
           <button class="btn sim" id="b-sim" title="Esconde o gabarito até fechar o bloco">Simulado</button>
         </div>
-        <button class="btn ghost" id="b-list" style="display:none" title="Fecha o agrupamento atual sem apagar nada">Finalizar lista</button>
+        <button class="btn ghost" id="b-list">Nova lista</button>
         <div class="hint" id="hint">detectando…</div>
       </div>
     </div>`;
@@ -135,22 +139,36 @@
   let settings = RC.DEFAULT_SETTINGS;
   let tickTimer = null;
 
+  /** Lista aberta, se houver: é ela que manda nos números grandes. */
+  function openList() {
+    const l = RC.bridge.list;
+    return l && !l.finishedAt ? l : null;
+  }
+
   async function refresh(flash) {
     const { days, settings: s } = await RC.store.getAll();
     settings = s;
     const t = RC.stats.today(days);
-    $('n-total').textContent = t.total;
-    $('n-hit').textContent = t.hits;
-    $('n-miss').textContent = t.misses;
-    const valid = t.hits + t.misses;
-    $('n-rate').textContent = valid ? Math.round(RC.hitRate(t)) + '%' : '—';
+    // Com lista aberta os números são dela (começa do 0 a cada aula); o dia
+    // continua visível na linha da meta, logo abaixo.
+    const l = openList();
+    const n = l || t;
+    $('n-total').textContent = n.total;
+    $('n-hit').textContent = n.hits;
+    $('n-miss').textContent = n.misses;
+    const valid = n.hits + n.misses;
+    const rate = valid ? Math.round((n.hits / valid) * 100) + '%' : '—';
+    $('n-rate').textContent = rate;
+    const scope = $('scope');
+    scope.classList.toggle('list', !!l);
+    scope.textContent = l ? 'lista' + (l.name ? ' · ' + l.name : '') : 'hoje';
 
     const goal = Math.max(1, s.dailyGoal);
     const pct = Math.min(100, (t.total / goal) * 100);
     $('fill').style.width = pct + '%';
     $('bar').classList.toggle('done', t.total >= goal);
     $('goal').textContent = `meta ${t.total}/${goal}`;
-    $('mini').textContent = `${t.total} · ${valid ? Math.round(RC.hitRate(t)) + '%' : '—'}`;
+    $('mini').textContent = `${n.total} · ${rate}`;
 
     if (flash) {
       box.classList.add('flash');
@@ -254,15 +272,23 @@
   });
   RC.clock.onChange(renderClock);
 
-  /** O botão só existe quando há lista aberta — senão não teria o que fechar. */
+  /** Sem lista aberta, o botão abre uma; com lista aberta, fecha. */
   function renderListBtn(l) {
     const b = $('b-list');
     const open = !!(l && !l.finishedAt);
-    b.style.display = open ? '' : 'none';
-    if (open) b.textContent = `Finalizar lista (${l.total})`;
+    b.textContent = open ? `Finalizar lista (${l.total})` : 'Nova lista';
+    b.title = open
+      ? 'Fecha o agrupamento atual sem apagar nada'
+      : 'Começa uma contagem do 0 (ex.: uma aula) sem mexer no total do dia';
+    refresh(false);
   }
 
   $('b-list').addEventListener('click', async () => {
+    if (!openList()) {
+      await RC.bridge.startList();
+      $('hint').textContent = 'lista aberta — contando do 0';
+      return;
+    }
     const l = await RC.bridge.finishList();
     if (!l) return;
     const valid = l.hits + l.misses;
@@ -320,7 +346,11 @@
   });
 
   chrome.storage.onChanged.addListener((changes) => {
-    if (changes[RC.KEYS.days] || changes[RC.KEYS.settings]) refresh(false);
+    // A lista muda a cada registro e pode ser aberta/fechada por outra superfície.
+    if (changes[RC.KEYS.list]) {
+      RC.bridge.list = changes[RC.KEYS.list].newValue || null;
+      renderListBtn(RC.bridge.list);
+    } else if (changes[RC.KEYS.days] || changes[RC.KEYS.settings]) refresh(false);
   });
 
   (async () => {

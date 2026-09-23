@@ -116,5 +116,26 @@ await RC.store.resetDay(RC.dayKey(now));
 all = await RC.store.getAll();
 ck('agregado antigo sobrevive à poda', all.days[RC.dayKey(now - DAY)].total, 2);
 
+// ---- revisão aula por aula no TEC -------------------------------------------
+// Um caderno por aula, 15 questões cada: cada lista começa do 0 enquanto o dia
+// continua somando. Era o defeito: na 3ª aula o painel começava em 30.
+await RC.store.resetDay(RC.dayKey(now));
+let q = 5000;
+const aulas = [];
+for (const aula of ['Aula 00', 'Aula 01', 'Aula 02']) {
+  await RC.store.clearList();
+  const l0 = await RC.store.startList({ origin: 'tec', name: aula });
+  ck(`${aula} começa do 0`, l0.total, 0);
+  for (let i = 0; i < 15; i++) {
+    await RC.store.record({ idQuestao: q++, origin: 'tec', correct: i % 3 !== 0, seconds: 20 });
+  }
+  aulas.push(await RC.store.finishList());
+}
+ck('cada aula fecha com 15', aulas.map((l) => l.total), [15, 15, 15]);
+ck('acertos por aula', aulas.map((l) => [l.hits, l.misses]), [[10, 5], [10, 5], [10, 5]]);
+all = await RC.store.getAll();
+ck('dia soma as três aulas', RC.stats.today(all.days).total, 45);
+ck('registros do TEC ligados à lista', all.attempts.filter((a) => a.listId === aulas[2].id).length, 15);
+
 console.log(fail ? `\n${fail} FALHA(S)` : '\nTodos os testes de lista passaram');
 process.exit(fail ? 1 : 0);

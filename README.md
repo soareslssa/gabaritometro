@@ -27,7 +27,7 @@ fora do TEC.
 
 ## O que você vê
 
-**Painel na página**: feitas / certas / erradas / % de hoje, barra da meta diária, cronômetro da
+**Painel na página**: feitas / certas / erradas / % de hoje (ou da lista aberta), barra da meta diária, cronômetro da
 questão atual (fica amarelo se você passar do limite), botões manuais e desfazer.
 
 **Popup do ícone**: meta do dia, comparativo com a semana anterior, ofensiva (🔥), gráfico dos
@@ -80,8 +80,13 @@ guarda a origem, então o popup mostra o split `TEC 120 · PDF 34`.
 
 **Finalizar lista** fecha o agrupamento atual e mostra o resultado dele (total, %, tempo médio).
 Não apaga nada: é só o fim do agrupamento. Depois, "Nova lista" já vem com a matéria anterior
-preenchida — repetir é um clique, trocar de matéria é editar um campo. No painel do TEC o botão só
-aparece quando existe lista aberta.
+preenchida — repetir é um clique, trocar de matéria é editar um campo.
+
+No painel do TEC, **Nova lista** abre uma contagem que começa do 0 — pensada para revisar aula por
+aula (um caderno por aula). Enquanto a lista está aberta, os números grandes do painel são dela, e o
+total do dia continua na linha da meta (`meta 45/50`). Finalizar mostra o resultado da aula e o
+botão volta a ser "Nova lista". Vale a regra de sempre: a mesma questão no mesmo dia conta uma vez
+só, então refazer o mesmo caderno no mesmo dia não soma na lista nova.
 
 **Zerar hoje** (popup) apaga as questões e as horas do dia, preservando os dias anteriores. O
 diálogo diz exatamente o que vai sumir ("34 questões e 2h10 de hoje") — "zerar" sem número é um
@@ -185,7 +190,8 @@ TEC oculta com o contador visível continua sustentando, presença vencida não 
 é idempotente (pausar de duas superfícies não credita o tempo duas vezes), o clamp do batimento
 sobrevive à troca de superfície, e os rótulos de estado compartilhados.
 
-`test-list.mjs` — 26 asserções sobre listas, origem e reset: ciclo da lista, herança de
+`test-list.mjs` — 33 asserções sobre listas, origem e reset: ciclo da lista, revisão aula por aula
+(cada lista começa do 0 enquanto o dia soma), herança de
 matéria/assunto/banca, ids únicos, split TEC × PDF, `resetDay` preservando os dias anteriores e
 recalculando a ofensiva, e a **regressão do chute retroativo** (o id era remontado por fora e
 virava `tec:undefined`, fazendo `setGuess` falhar em silêncio).
